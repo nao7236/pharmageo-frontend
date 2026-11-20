@@ -1,7 +1,19 @@
 import React, { useState } from 'react';
 
 const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const API_URL = rawApiUrl.replace(/\/+$/, '');
+const API_URL = rawApiUrl.trim().replace(/\/+$/, '');
+
+async function parseResponseJson(res) {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    const preview = text.replace(/\s+/g, ' ').trim().slice(0, 140);
+    throw new Error(
+      `Réponse non-JSON (HTTP ${res.status}) : ${preview || 'réponse vide'}`
+    );
+  }
+}
 
 function App() {
   const [pharmacies, setPharmacies] = useState([]);
@@ -28,7 +40,7 @@ function App() {
     setErrorMsg('');
     fetch(`${API_URL}/api/pharmacies/search?lat=${lat}&lng=${lng}`)
       .then(async (res) => {
-        const data = await res.json();
+        const data = await parseResponseJson(res);
         if (!res.ok) {
           throw new Error(data.message || data.error || `Erreur HTTP ${res.status}`);
         }
@@ -72,7 +84,7 @@ function App() {
 
     try {
       const res = await fetch(`${API_URL}/api/pharmacies/${pharmacy.id}/stocks`);
-      const data = await res.json();
+      const data = await parseResponseJson(res);
       if (!res.ok) {
         throw new Error(data.error || 'Erreur lors du chargement du stock');
       }
@@ -133,7 +145,7 @@ function App() {
           paiement: paymentInfo,
         }),
       });
-      const data = await res.json();
+      const data = await parseResponseJson(res);
       if (!res.ok) {
         throw new Error(data.error || 'Erreur lors de la précommande');
       }
